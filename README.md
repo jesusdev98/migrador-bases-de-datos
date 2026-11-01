@@ -1,0 +1,156 @@
+﻿# AI Database Migrator
+
+A local prototype where a browser-loaded AI model generates migration records
+and Python independently validates them before writing to PostgreSQL, MariaDB,
+or MongoDB. The test source is a reproducible SQLite fixture of the first 151
+Pokémon from PokéAPI, including sprite URLs and relational type data.
+
+**Verified status:** complete AI-generated PostgreSQL and MariaDB runs have been
+read back and compared to the source: 151 Pokémon and 218 type relations match.
+MongoDB generation is implemented, but its latest full run stopped at IDs 51–55;
+it is not yet verified end to end. This is not a general-purpose arbitrary-schema
+migrator or a production-ready data-transfer system.
+
+## Quick start
+
+```sh
+python3 -m venv .venv
+. .venv/bin/activate
+python -m pip install -r requirements.txt
+python pokemon_db.py
+python pokemon_ui.py
+```
+
+Open <http://127.0.0.1:8000>, load the recommended Llama model explicitly, and
+start with a no-write pilot. Actual migrations additionally require separately
+configured local database services and restricted database accounts. No Docker
+is required. Generated databases, exports, model files and private credentials
+are not included in this repository.
+
+## Documentation
+
+- [Current status and known limitations](docs/status.md)
+- [Architecture and safety boundaries](docs/architecture.md)
+- [Bounded model trials and diagnostic reports](docs/model-diagnostics.md)
+- [Read-only batch validation contract](docs/batch-validation.md)
+- [Isolated WebLLM reproduction](docs/webllm-probe.md)
+- [AWS reference review](docs/aws-reference-review.md)
+- [Verification and version-control recovery](docs/development.md)
+
+## Requirements
+
+- Python 3.10 or newer
+- Internet access for the initial seed and browser-loaded model
+- The SQLite loader and file exporters use only Python's standard library.
+- The viewer imports the migration service and requires the database drivers even for read-only startup.
+- Local PostgreSQL, MongoDB and MariaDB connections use the drivers in `requirements.txt`.
+
+Create the project environment and install the database drivers with:
+
+```sh
+python3 -m venv .venv
+. .venv/bin/activate
+python -m pip install -r requirements.txt
+```
+
+## Create or update the database
+
+From this directory, run:
+
+```sh
+python pokemon_db.py
+```
+
+By default this creates `pokemon.sqlite3` beside the script. To choose another
+location:
+
+```sh
+python pokemon_db.py --database path/to/pokemon.sqlite3
+```
+
+The loader requests only missing Pokémon IDs, so rerunning it uses the local
+SQLite database as a cache and can resume after an interrupted download. PokéAPI
+asks clients to cache resources and keep request frequency reasonable.
+
+## Export migration files
+
+Generate a PostgreSQL SQL script and a MongoDB JSON Lines file without installing
+or connecting to either database server:
+
+```sh
+python migration_export.py
+```
+
+By default, the files are written under `exports/`. To select another source or
+output directory:
+
+```sh
+python migration_export.py --database pokemon.sqlite3 --output-dir exports
+```
+
+The exporter refuses to replace existing output files. Pass `--overwrite` only
+when you intend to replace the generated files. The PostgreSQL script creates
+the normalized tables and upserts the Pokémon and type rows. The JSONL file
+contains one document per Pokémon, with ordered type objects embedded in each
+document; each line can be imported separately by MongoDB tooling.
+
+## View the data locally
+
+After installing `requirements.txt` and seeding the fixture, start the local interface:
+
+```sh
+python pokemon_ui.py
+```
+
+Then open <http://127.0.0.1:8000>. The server listens only on loopback and reads
+from `pokemon.sqlite3`; use `--database path/to/pokemon.sqlite3` or `--port 8080`
+to select another fixture or port. Pokémon names, type labels, and sprite URLs
+are HTML-escaped before rendering. Sprite images load from their stored PokéAPI
+URLs, so viewing them requires internet access.
+
+The browser recommends **Llama 3.2 · 3B q4f32**, with Qwen models still available as alternatives. Llama passed the current isolated single-record copy, relational and MongoDB cases; this is not proof of all-record migration reliability. Model files are downloaded only after you select a model and press **Load model**; WebLLM 0.2.87 runs them with WebGPU and keeps them in browser cache. Use **Delete selected model from cache** to remove a model before switching. A WebGPU-compatible browser and internet access are needed for a first load; Llama's registry estimate is about 3 GB of GPU memory. Model weights have their own license terms. The WebLLM runtime itself is dynamically fetched from its pinned CDN release only when you load or delete a model; model inference runs in the browser.
+
+
+## Schema
+
+- `pokemon`: ID, name, height, weight, and `sprite_url`.
+- `pokemon_types`: one row per type, linked to `pokemon` by a foreign key.
+
+## Tests
+
+Run the offline tests with:
+
+```sh
+python -m unittest discover -s tests -v
+```
+
+
+
+
+
+## Local target migrations
+
+The local interface offers PostgreSQL, MongoDB, and MariaDB migration buttons. Load a browser model first: without a loaded model, no source read or migration request occurs. The model analyzes the SQLite fixture and generates target-format records in batches. Each inference awaits `resetChat()` and uses an explicit serialized structural JSON schema; source values are not forced through schema constants. The earlier grammar initialization error was reproduced and resolved in the isolated case by supplying the missing schema. Python still independently rejects malformed, incomplete or altered output before any database write. Python writes only to a newly generated isolated schema, collection, or table pair, then reads the destination back and verifies the stored records. Existing target data is not overwritten. After a successful migration, a new tab reads and displays records from that destination through the local Python server; database credentials stay server-side.
+
+Start with **Test one Pokémon (no writes)** at ID 10, then **Test up to five Pokémon (no writes)** starting at ID 1 and ID 6. A bounded pilot includes that source record and up to four following source records, with all matching type relations. Neither pilot calls the destination-write endpoint or opens a result tab. Only broaden to the full migration after collecting real-model results for those cases on each target. See [model diagnostics](docs/model-diagnostics.md).
+
+PostgreSQL uses the local `pokemon_migrator` database by default. MongoDB uses `mongodb://127.0.0.1:27017` by default; set `MONGODB_URI` to override it. Install and configure the services separately; on an Ubuntu system with MongoDB installed, `sudo systemctl start mongod` starts it. MariaDB uses `127.0.0.1:3306` and database `pokemon_migrator` by default. Set `MARIADB_USER` and `MARIADB_PASSWORD` in the server environment; optional `MARIADB_HOST`, `MARIADB_PORT`, and `MARIADB_DATABASE` override the defaults. Keep secrets outside the repository and never paste them into diagnostic reports. PyMySQL is a pure-Python MariaDB-compatible driver; no Docker or native client library is required. The MariaDB database and user must already exist and have permission to create and drop only the migration tables it creates.
+
+PostgreSQL authentication uses libpq defaults/environment (`PGHOST`, `PGPORT`,
+`PGUSER`, `PGPASSWORD`) with the database name fixed to `pokemon_migrator` by the
+application default. Provision that database and a restricted role allowed to
+create its isolated schemas; a fresh clone does not create users or services.
+Local peer authentication additionally depends on the operating-system user and
+PostgreSQL configuration. Never use a database superuser merely to bypass setup.
+
+Model weights, WebLLM, dataset sources and referenced projects have separate
+licenses/terms. This repository does not currently grant an open-source license
+for its own code; public availability alone is not a code-reuse license.
+
+## WebMCP browser tools
+
+When the browser supports WebMCP, this page registers two read-only tools: one reports the current migration/model controls and status text, and one checks the expected controls and accessibility roles. They do not expose database writes or add any visible badge, widget, status, or page copy. Browsers without WebMCP continue to use the regular interface unchanged. WebMCP is experimental; Chrome documents local testing via `chrome://flags/#enable-webmcp-testing` and DevTools' WebMCP panel. Actual tool discovery/execution still requires a compatible browser.
+
+References: [WebMCP](https://developer.chrome.com/docs/ai/webmcp), [Imperative API](https://developer.chrome.com/docs/ai/webmcp/imperative-api), [WebMCP tool security](https://developer.chrome.com/docs/ai/webmcp/secure-tools).
+
+

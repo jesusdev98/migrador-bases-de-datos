@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Isolated WebLLM probe</title>
+<style>body{font:16px system-ui;max-width:960px;margin:2rem auto;padding:1rem}button,select{font:inherit;padding:.5rem;margin:.3rem}pre{white-space:pre-wrap;overflow-wrap:anywhere;background:#f3f5f8;padding:1rem}</style>
+<h1>Isolated WebLLM probe</h1>
+<p>No database access or migration code. Close other model tabs first to avoid sharing GPU memory. Loading is explicit and may download model assets into this origin's cache.</p>
+<p>Based on the <a href="https://github.com/mlc-ai/web-llm/tree/v0.2.86/examples/get-started">official minimal example at v0.2.86</a>; adapted for a controlled comparison of published WebLLM versions and model families. This is not an unchanged upstream example or a migration-runtime upgrade.</p>
+<label>Runtime version <select id="runtime"><option>0.2.86</option><option>0.2.87</option></select></label>
+<label>Model <select id="model">
+<option>Qwen2.5-3B-Instruct-q4f16_1-MLC</option>
+<option>Qwen2.5-3B-Instruct-q4f32_1-MLC</option>
+<option>Llama-3.2-3B-Instruct-q4f32_1-MLC</option>
+<option>Qwen2.5-0.5B-Instruct-q4f16_1-MLC</option>
+<option>Qwen2.5-1.5B-Instruct-q4f16_1-MLC</option>
+</select></label>
+<p>Model weights have separate terms. Review the <a href="https://huggingface.co/meta-llama/Llama-3.2-3B-Instruct">Llama 3.2 model card and license</a> before explicitly loading that model. It may download new assets and uses about 3 GB of GPU memory according to the runtime registry.</p>
+<button id="load">Load selected model</button><button id="unload" disabled>Unload GPU model</button>
+<p><label>Case <select id="case">
+<option value="baseline">1. Minimal plain completion</option>
+<option value="copy">2. Exact source-value copy</option>
+<option value="sql">3. Single relational record</option>
+<option value="mongo">4. Single MongoDB document</option>
+</select></label>
+<label>Output mode <select id="mode"><option value="plain">Plain (baseline)</option><option value="json">JSON object + explicit schema (grammar comparison)</option></select></label></p>
+<button id="run" disabled>Run one case (no retries)</button><button id="download" disabled>Download probe report</button>
+<p id="status" role="status" aria-live="polite">Load a model to begin. JSON mode can reproduce the earlier grammar error; it is not a guaranteed fix.</p>
+<h2>Exact request and raw result</h2><pre id="output">No inference yet.</pre>
+<script type="module" src="/probe.js"></script>
+</html>

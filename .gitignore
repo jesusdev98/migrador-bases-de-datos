@@ -1,0 +1,24 @@
+﻿__pycache__/
+*.py[cod]
+.venv/
+
+# Local credentials and environment files
+.env
+.env.*
+*.env
+*.pem
+*.key
+
+# Generated datasets, exports, caches, and local model diagnostics
+*.sqlite3
+*.sqlite3-*
+*.db
+exports/
+migration-diagnostics*.json
+webllm-isolated-probe*.json
+*.log
+.pytest_cache/
+node_modules/
+
+# Internal recovery notes may contain conversations and machine-specific details
+odd/
