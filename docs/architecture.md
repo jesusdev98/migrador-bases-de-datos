@@ -34,6 +34,26 @@ No model-generated SQL, shell commands or executable code are evaluated.
 
 ## Scope and operational limits
 
+### Presentation ownership
+
+`frontend/src/app.jsx` mounts React only inside `#interface-root`. The existing
+model, migration and WebMCP modules retain their original execution order and
+own their controls, DOM references and actions. `statusBridge.js` observes status
+text and disabled controls with `MutationObserver`; it never fetches, clicks or
+writes controller state and disconnects on unmount. Engine presence is read from
+the existing same-origin module. The bridge conservatively keeps graphics paused
+after observing a resident engine, even if a selection change hides it from the
+controller's getter. Status text alone never establishes migration completion.
+
+Only `/static/ui/app.js` and `/static/ui/app.css` are added to the exact static
+allowlist, with explicit MIME types and `nosniff`. Source and destination values
+remain HTML-escaped in Python, outside React ownership. Destination pages share
+CSS only, avoiding model-controller imports against absent controls. The existing
+loopback binding and POST origin, content-type, size and validation guards remain
+the persistence boundary.
+
+### Runtime limits
+
 This is a local development prototype, not an authenticated multi-user server.
 Do not expose its ports publicly. Database credentials are supplied server-side,
 outside Git; model weights use browser-managed storage. Loopback/origin guards

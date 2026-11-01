@@ -132,10 +132,13 @@ def render_pokemon_page(database_path: str | Path = DEFAULT_DATABASE_PATH) -> st
     .migration-actions {{ display: flex; flex-wrap: wrap; gap: .75rem; }}
     #migration-status {{ min-height: 1.5rem; }}
   </style>
+  <link rel="stylesheet" href="/static/ui/app.css">
 </head>
 <body>
   <header><h1>Pokémon database</h1><p>{len(pokemon)} Pokémon · Read-only local SQLite view</p></header>
+  <div id="interface-root"></div>
   <section class="model-panel" aria-labelledby="model-heading">
+    <p class="step-label">01 / PREPARE THE BROWSER</p>
     <h2 id="model-heading">Local AI model</h2>
     <p>Runs in this browser with WebGPU. The model is fetched only when you press Load model and kept in this browser's cache.</p>
     <div class="model-controls">
@@ -153,6 +156,7 @@ def render_pokemon_page(database_path: str | Path = DEFAULT_DATABASE_PATH) -> st
     <p id="model-status" role="status" aria-live="polite">Model not loaded. WebGPU and internet access are required for the first load. Llama's runtime registry estimates about 3 GB of GPU memory; model weights have separate license terms.</p>
   </section>
   <section class="migration-panel" aria-labelledby="migration-heading">
+    <p class="step-label">02 / TEST FIRST, THEN MIGRATE</p>
     <h2 id="migration-heading">Migrate this SQLite fixture</h2>
     <p>Load a model first. Start with no-write pilots of one or up to five records. The full migration actions generate all target records; Python validates the result, writes it to a new isolated destination, and checks the stored data.</p>
     <div class="migration-actions">
@@ -162,10 +166,11 @@ def render_pokemon_page(database_path: str | Path = DEFAULT_DATABASE_PATH) -> st
     </div>
     <p id="migration-status" role="status" aria-live="polite">Load a model before migrating. PostgreSQL, MongoDB, and MariaDB require local database services.</p>
   </section>
-  <main><section class="grid" aria-label="Pokémon">{content}</section></main>
+  <main><div class="collection-heading"><h2>Source collection</h2><p>SQLite fixture · {len(pokemon)} records · Read-only</p></div><section class="grid" aria-label="Pokémon">{content}</section></main>
   <script type="module" src="/static/model_loader.js"></script>
   <script type="module" src="/static/migration.js"></script>
   <script type="module" src="/static/webmcp_tools.js"></script>
+  <script type="module" src="/static/ui/app.js"></script>
 </body>
 </html>
 """
@@ -205,7 +210,8 @@ def render_migration_page(target: str, destination: str) -> str:
     return f"""<!doctype html><html lang="en"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1"><title>Migrated Pokémon</title>
 <style>body{{font:16px system-ui,sans-serif;margin:2rem;background:#f3f5f8;color:#202532}}.grid{{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:1rem}}.card{{padding:1rem;border:1px solid #e1e5eb;border-radius:14px;background:white}}.sprite{{height:120px;display:grid;place-items:center;background:#f3f5f8}}img{{width:112px;height:112px;object-fit:contain}}.types{{display:flex;gap:.4rem}}.type{{background:#e9eef8;border-radius:999px;padding:.2rem .5rem}}.number{{color:#737b8b}}</style>
-</head><body><header><h1>Migrated Pokémon</h1><p>Read from {target_label} · {html.escape(destination)}</p></header>
+<link rel="stylesheet" href="/static/ui/app.css">
+</head><body><header class="results-header"><a href="/">← Back to source workspace</a><h1>Migrated Pokémon</h1><p>Read from {target_label} · {html.escape(destination)}</p></header>
 <main class="grid">{content}</main></body></html>"""
 
 
@@ -254,6 +260,23 @@ def create_server(
                 self.send_header("Content-Type", "application/json; charset=utf-8")
                 self.send_header("Content-Length", str(len(body)))
                 self.send_header("Cache-Control", "no-store")
+                self.send_header("X-Content-Type-Options", "nosniff")
+                self.end_headers()
+                self.wfile.write(body)
+                return
+            if request_path in {"/static/ui/app.js", "/static/ui/app.css"}:
+                asset_name = "app.js" if request_path == "/static/ui/app.js" else "app.css"
+                asset_path = Path(__file__).resolve().parent / "static" / "ui" / asset_name
+                try:
+                    body = asset_path.read_bytes()
+                except OSError:
+                    self.send_error(404, "Not found")
+                    return
+                self.send_response(200)
+                content_type = "text/javascript" if asset_name == "app.js" else "text/css"
+                self.send_header("Content-Type", f"{content_type}; charset=utf-8")
+                self.send_header("Cache-Control", "no-store")
+                self.send_header("Content-Length", str(len(body)))
                 self.send_header("X-Content-Type-Options", "nosniff")
                 self.end_headers()
                 self.wfile.write(body)

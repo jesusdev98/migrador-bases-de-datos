@@ -123,6 +123,15 @@ to select another fixture or port. Pokémon names, type labels, and sprite URLs
 are HTML-escaped before rendering. Sprite images load from their stored PokéAPI
 URLs, so viewing them requires internet access.
 
+The interface adds a React presentation island and a decorative Three.js Poké
+Ball. Opening the decoration never loads a model or starts a migration. It
+respects reduced motion and yields graphics while the tab is hidden or the model
+is active. Once a loaded engine has been observed, decoration stays suspended
+until a fresh page visit, including after changing the selected model. Existing
+controls and result records remain server-rendered; the results page uses the
+shared stylesheet without starting React or the model controller. Locally built
+assets are included for Python-only startup. See [frontend development](docs/development.md#frontend-presentation).
+
 The browser recommends **Llama 3.2 · 3B q4f32**, with Qwen models still available as alternatives. Llama passed the current isolated single-record copy, relational and MongoDB cases; this is not proof of all-record migration reliability. Model files are downloaded only after you select a model and press **Load model**; WebLLM 0.2.87 runs them with WebGPU and keeps them in browser cache. Use **Delete selected model from cache** to remove a model before switching. A WebGPU-compatible browser and internet access are needed for a first load; Llama's registry estimate is about 3 GB of GPU memory. Model weights have their own license terms. The WebLLM runtime itself is dynamically fetched from its pinned CDN release only when you load or delete a model; model inference runs in the browser.
 
 
@@ -167,4 +176,3 @@ for its own code; public availability alone is not a code-reuse license.
 When the browser supports WebMCP, this page registers two read-only tools: one reports the current migration/model controls and status text, and one checks the expected controls and accessibility roles. They do not expose database writes or add any visible badge, widget, status, or page copy. Browsers without WebMCP continue to use the regular interface unchanged. WebMCP is experimental; Chrome documents local testing via `chrome://flags/#enable-webmcp-testing` and DevTools' WebMCP panel. Actual tool discovery/execution still requires a compatible browser.
 
 References: [WebMCP](https://developer.chrome.com/docs/ai/webmcp), [Imperative API](https://developer.chrome.com/docs/ai/webmcp/imperative-api), [WebMCP tool security](https://developer.chrome.com/docs/ai/webmcp/secure-tools).
-

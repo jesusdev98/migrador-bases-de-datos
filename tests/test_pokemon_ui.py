@@ -69,6 +69,60 @@ class PokemonUiTests(unittest.TestCase):
         )
         self.assertIn("1 Pokémon", page)
 
+    def test_react_island_is_separate_and_scripts_keep_controller_order(self):
+        page = render_pokemon_page(self.database_path)
+        self.assertIn('<link rel="stylesheet" href="/static/ui/app.css">', page)
+        self.assertIn('id="interface-root"', page)
+        scripts = ["/static/model_loader.js", "/static/migration.js",
+                   "/static/webmcp_tools.js", "/static/ui/app.js"]
+        self.assertEqual([page.index(script) for script in scripts],
+                         sorted(page.index(script) for script in scripts))
+        self.assertIn('id="interface-root"></div>', page)
+        self.assertEqual(page.count('id="load-model"'), 1)
+
+    def test_results_use_shared_style_without_loading_model_controller(self):
+        from pokemon_ui import render_migration_page
+        migration = self.postgresql_output()
+        migration["pokemon"][0]["name"] = '<script>alert("x")</script>'
+        with patch("pokemon_ui.read_postgresql_migration", return_value=migration):
+            page = render_migration_page("postgresql", "pokemon_migration_20261029_120000_ab12cd34")
+        self.assertIn('/static/ui/app.css', page)
+        self.assertNotIn('<script', page)
+        self.assertIn('&lt;Script&gt;', page)
+        self.assertIn('href="/"', page)
+
+    def test_ui_assets_are_exact_allowlisted_and_missing_files_return_404(self):
+        server = create_server(self.database_path, port=0)
+        thread = threading.Thread(target=server.serve_forever, daemon=True)
+        thread.start()
+        base = f"http://127.0.0.1:{server.server_address[1]}"
+        try:
+            for name, content_type in (("app.js", "text/javascript; charset=utf-8"),
+                                       ("app.css", "text/css; charset=utf-8")):
+                with patch("pokemon_ui.Path.read_bytes", return_value=b"asset fixture") as read:
+                    with urlopen(f"{base}/static/ui/{name}", timeout=5) as response:
+                        self.assertEqual(response.status, 200)
+                        self.assertEqual(response.headers["Content-Type"], content_type)
+                        self.assertEqual(response.headers["Cache-Control"], "no-store")
+                        self.assertEqual(response.headers["X-Content-Type-Options"], "nosniff")
+                        self.assertEqual(response.read(), b"asset fixture")
+                    read.assert_called_once_with()
+            for path in ("/static/ui/other.js", "/static/ui/../model_loader.js",
+                         "/static/ui/%2e%2e/app.js", "/static/ui/app.js/map"):
+                with patch("pokemon_ui.Path.read_bytes") as read:
+                    with self.assertRaises(HTTPError) as error:
+                        urlopen(base + path, timeout=5)
+                    self.assertEqual(error.exception.code, 404)
+                    read.assert_not_called()
+            with patch("pokemon_ui.Path.read_bytes", side_effect=OSError):
+                with self.assertRaises(HTTPError) as error:
+                    urlopen(base + "/static/ui/app.js", timeout=5)
+                self.assertEqual(error.exception.code, 404)
+        finally:
+            server.shutdown()
+            thread.join(timeout=5)
+            server.server_close()
+
     def test_migration_page_loads_records_from_the_selected_destination(self):
         from pokemon_ui import render_migration_page
 

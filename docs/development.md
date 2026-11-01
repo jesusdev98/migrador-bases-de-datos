@@ -13,6 +13,21 @@ MariaDB also requires its connection environment variables. Tests create isolate
 schemas, collections/databases or table pairs and clean up their own test data.
 Do not point integration tests at important datasets or overprivileged accounts.
 
+## Frontend presentation
+
+Python startup uses the committed `static/ui/app.js` and `app.css`; Node is only
+needed when editing the frontend. From `frontend/`, use `npm ci`, `npm test`, then
+`npm run build`. Commit rebuilt assets with their source changes. The build
+bundles React and Three.js locally, not WebLLM or model weights. It preserves the
+same-origin model controller as an external module.
+
+The focused shell checks are `npm test -- tests/statusBridge.test.js tests/app.test.jsx`.
+The decoration lifecycle has a separate component test suite. Browser review
+should first use no-action checks: resize the source and results pages, navigate
+by keyboard, toggle reduced motion, hide the tab, and open/close the decoration.
+Confirm that none of these starts model loading, inference or a migration.
+The status mirror reports controller messages, not independently verified success.
+
 ## Real browser checks
 
 1. Load Llama explicitly and test ID 10 without writes for the chosen target.

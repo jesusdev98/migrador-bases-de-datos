@@ -1,1 +1,4 @@
 * text=auto eol=lf
+# Generated bundles retain upstream shader-string whitespace; check authored files normally.
+static/ui/* linguist-generated=true
+static/ui/app.js -whitespace
