@@ -43,6 +43,7 @@ are not included in this repository.
 
 ## Documentation
 
+- [Lecciones aprendidas: problemas, pruebas y evolución](docs/lecciones-aprendidas.md)
 - [Current status and known limitations](docs/status.md)
 - [Architecture and safety boundaries](docs/architecture.md)
 - [Bounded model trials and diagnostic reports](docs/model-diagnostics.md)
@@ -166,5 +167,4 @@ for its own code; public availability alone is not a code-reuse license.
 When the browser supports WebMCP, this page registers two read-only tools: one reports the current migration/model controls and status text, and one checks the expected controls and accessibility roles. They do not expose database writes or add any visible badge, widget, status, or page copy. Browsers without WebMCP continue to use the regular interface unchanged. WebMCP is experimental; Chrome documents local testing via `chrome://flags/#enable-webmcp-testing` and DevTools' WebMCP panel. Actual tool discovery/execution still requires a compatible browser.
 
 References: [WebMCP](https://developer.chrome.com/docs/ai/webmcp), [Imperative API](https://developer.chrome.com/docs/ai/webmcp/imperative-api), [WebMCP tool security](https://developer.chrome.com/docs/ai/webmcp/secure-tools).
-
 
