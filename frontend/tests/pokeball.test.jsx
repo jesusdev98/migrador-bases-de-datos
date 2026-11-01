@@ -10,10 +10,11 @@ vi.mock('three', async (importOriginal) => {
   return {
     ...actual,
     WebGLRenderer: class {
-      constructor() {
+      constructor(options) {
         graphics.attempts += 1;
         if (graphics.fail) throw new Error('WebGL unavailable');
         this.domElement = document.createElement('canvas');
+        this.options = options;
         this.setAnimationLoop = vi.fn((loop) => { this.loop = loop; });
         this.setPixelRatio = vi.fn();
         this.setSize = vi.fn();
@@ -79,10 +80,13 @@ describe('decorative Poké Ball', () => {
     draw();
     const renderer = latest();
     expect(renderer).toBeDefined();
+    expect(renderer.options.alpha).toBe(true);
+    expect(host.querySelector('section > div').style.background).toBe('transparent');
     expect(renderer.setPixelRatio.mock.calls[0][0]).toBeLessThanOrEqual(1.5);
     expect(renderer.setSize.mock.calls[0].slice(0, 2).every((size) => size > 0 && size <= 320)).toBe(true);
     const [scene, camera] = renderer.render.mock.calls[0];
     expect(scene.isScene).toBe(true);
+    expect(scene.background).toBeNull();
     expect(camera.isOrthographicCamera || camera.isPerspectiveCamera).toBe(true);
     const meshes = [];
     scene.traverse((object) => { if (object.isMesh) meshes.push(object); });
@@ -129,6 +133,7 @@ describe('decorative Poké Ball', () => {
     expect(graphics.renderers).toHaveLength(0);
     expect(host.querySelector('button')).toBeNull();
     expect(host.querySelector('[role="img"]')).not.toBeNull();
+    expect(host.querySelector('svg radialGradient')).not.toBeNull();
     expect(fetch).not.toHaveBeenCalled();
   });
 

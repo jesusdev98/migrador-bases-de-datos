@@ -1,22 +1,33 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useId, useRef, useState } from 'react';
 import * as THREE from 'three';
 
 const motionQuery = '(prefers-reduced-motion: reduce)';
 const frameStyle = {
   width: '100%', maxWidth: 320, aspectRatio: '1', position: 'relative',
-  margin: '0 auto', borderRadius: 24, overflow: 'hidden', background: '#e9e9e4',
+  margin: '0 auto', overflow: 'hidden', background: 'transparent',
 };
 
 function StaticBall() {
+  const gradient = useId();
   return (
     <svg viewBox="0 0 320 320" role="img" aria-label="Decorative Poké Ball (static)"
       style={{ display: 'block', width: '100%', height: '100%' }}>
-      <ellipse cx="160" cy="259" rx="83" ry="12" fill="#d0d0cb" />
-      <circle cx="160" cy="153" r="94" fill="#fafaf7" stroke="#222b34" strokeWidth="8" />
-      <path d="M66 153a94 94 0 0 1 188 0Z" fill="#d83f47" />
-      <path d="M67 153h186" stroke="#222b34" strokeWidth="13" />
-      <circle cx="160" cy="153" r="24" fill="#fafaf7" stroke="#222b34" strokeWidth="10" />
-      <circle cx="160" cy="153" r="11" fill="#e1e4e3" />
+      <defs>
+        <radialGradient id={`${gradient}-red`} cx="32%" cy="25%" r="80%">
+          <stop offset="0" stopColor="#ff7a81" /><stop offset=".4" stopColor="#ef3948" />
+          <stop offset="1" stopColor="#ac1d2b" />
+        </radialGradient>
+        <radialGradient id={`${gradient}-white`} cx="32%" cy="22%" r="80%">
+          <stop offset="0" stopColor="#ffffff" /><stop offset=".65" stopColor="#f2f1ee" />
+          <stop offset="1" stopColor="#aaa9a6" />
+        </radialGradient>
+      </defs>
+      <ellipse cx="160" cy="254" rx="70" ry="9" fill="#242424" opacity=".10" />
+      <circle cx="160" cy="160" r="80" fill={`url(#${gradient}-white)`} />
+      <path d="M80 160a80 80 0 0 1 160 0Z" fill={`url(#${gradient}-red)`} />
+      <path d="M80 160q80 20 160 0" fill="none" stroke="#242424" strokeWidth="8" />
+      <circle cx="160" cy="169" r="19" fill="#f6f5f1" stroke="#242424" strokeWidth="7" />
+      <circle cx="160" cy="169" r="10" fill="#e1e1dd" />
     </svg>
   );
 }
@@ -76,14 +87,13 @@ export default function Pokeball({ motionAllowed, suspended, activity }) {
       fail();
     }
     try {
-      renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false, powerPreference: 'low-power' });
+      renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, powerPreference: 'low-power' });
       renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.5));
       renderer.domElement.setAttribute('aria-hidden', 'true');
       renderer.domElement.style.cssText = 'display:block;width:100%;height:100%;';
       renderer.domElement.addEventListener('webglcontextlost', contextLost);
       container.append(renderer.domElement);
       const scene = new THREE.Scene();
-      scene.background = new THREE.Color('#e9e9e4');
       const camera = new THREE.PerspectiveCamera(38, 1, 0.1, 30);
       camera.position.set(0, 1.4, 5.8);
       camera.lookAt(0, 0.1, 0);

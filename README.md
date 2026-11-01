@@ -124,13 +124,27 @@ are HTML-escaped before rendering. Sprite images load from their stored PokéAPI
 URLs, so viewing them requires internet access.
 
 The interface adds a React presentation island and a decorative Three.js Poké
-Ball. Opening the decoration never loads a model or starts a migration. It
+Ball. Its light Pokédex-inspired theme uses red, white, black and yellow, with
+subtle Poké Ball patterns and transparent graphics. A shaded static illustration
+keeps the decoration visually integrated when 3D is suspended. Opening the
+decoration never loads a model or starts a migration. It
 respects reduced motion and yields graphics while the tab is hidden or the model
 is active. Once a loaded engine has been observed, decoration stays suspended
 until a fresh page visit, including after changing the selected model. Existing
 controls and result records remain server-rendered; the results page uses the
 shared stylesheet without starting React or the model controller. Locally built
 assets are included for Python-only startup. See [frontend development](docs/development.md#frontend-presentation).
+
+### Future direction: database files and exports
+
+File-based migration is planned, not implemented. The intended flow is to export
+data from a source database, upload a supported file, inspect its structure,
+review a destination mapping and let the model generate destination records for
+independent validation and controlled persistence. Supported formats, size limits,
+type conversion and handling of keys/relations still need design; arbitrary
+database dumps or schemas are not supported today. Further UI work will focus on
+that file-selection, mapping and verification workflow, beyond the visual refresh.
+See the [learning document and roadmap](docs/lecciones-aprendidas.md#8-interfaz-actual-y-próximos-hitos).
 
 The browser recommends **Llama 3.2 · 3B q4f32**, with Qwen models still available as alternatives. Llama passed the current isolated single-record copy, relational and MongoDB cases; this is not proof of all-record migration reliability. Model files are downloaded only after you select a model and press **Load model**; WebLLM 0.2.87 runs them with WebGPU and keeps them in browser cache. Use **Delete selected model from cache** to remove a model before switching. A WebGPU-compatible browser and internet access are needed for a first load; Llama's registry estimate is about 3 GB of GPU memory. Model weights have their own license terms. The WebLLM runtime itself is dynamically fetched from its pinned CDN release only when you load or delete a model; model inference runs in the browser.
 

@@ -17,6 +17,16 @@ That observation does not establish a universal model-quality or hardware claim.
 
 ## Validation evidence
 
+The local interface now has a React presentation island, a decorative Three.js
+Poké Ball and a light Pokédex-inspired theme shared by the source and stored-result
+views. Decoration suspends for model activity and reduced motion; it does not
+generate records or invoke database writes. The redesign was checked with 14
+frontend tests and real-browser desktop/mobile checks. Full migration runs below
+remain historical data evidence; they were not repeated just to take screenshots.
+
+Importing database files or exported datasets and migrating arbitrary schemas is
+future work. See the [roadmap](lecciones-aprendidas.md#8-interfaz-actual-y-próximos-hitos).
+
 The current deterministic suites cover loading/cache controls, no-model gating,
 JSON grammar requests, field/type/identity checks, bounded corrections, selective
 recovery, no-write pilots, readback and rejected-input invariants. Real model

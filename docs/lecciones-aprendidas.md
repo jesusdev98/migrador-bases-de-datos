@@ -11,7 +11,7 @@ Este documento resume problemas, pruebas y decisiones con evidencia al 1 de novi
 - Los tres destinos se leyeron después de escribir y coincidieron con la fuente.
 - El modelo genera los registros; la aplicación coordina y Python verifica.
 - Es un prototipo local para una estructura conocida, no un migrador universal.
-- La carga de archivos y el rediseño de la interfaz son trabajo futuro.
+- La mejora visual ya existe; la carga de archivos y el mapeo de esquemas son trabajo futuro.
 
 ## 1. Problema: obtener JSON válido no bastaba
 
@@ -131,7 +131,21 @@ reversión global entre motores. No es un agente autónomo universal ni un siste
 listo para producción. Los informes brutos se conservan localmente: pueden contener
 datos de entrada y deben revisarse antes de compartirlos.
 
-## 8. Próximos hitos: archivos e interfaz, todavía no implementados
+## 8. Interfaz actual y próximos hitos
+
+La mejora visual ya incorpora React y una Poké Ball decorativa con Three.js.
+El tema claro, inspirado en una Pokédex, utiliza rojo, blanco, negro y amarillo,
+con un patrón de Poké Balls y una ilustración estática sombreada cuando se pausa
+el 3D. La pausa al cargar el modelo es una medida preventiva para ceder recursos
+gráficos a la IA, no una prueba de incompatibilidad entre ambas bibliotecas.
+Los controles de migración siguen separados de la decoración.
+
+La siguiente evolución funcional sigue pendiente: exportar datos desde una base
+de origen, cargar un archivo compatible en la aplicación, inspeccionar su
+estructura, revisar el mapeo al destino y migrar con validación independiente.
+No está implementada la importación de esos archivos ni la migración de esquemas
+arbitrarios. Exportar archivos con las utilidades actuales no equivale a poder
+importarlos en el migrador.
 
 1. **Definir la entrada.** Decidir qué formatos de archivos de bases de datos se
    admitirán y sus límites de tamaño, seguridad y compatibilidad. No se promete
@@ -141,13 +155,14 @@ datos de entrada y deben revisarse antes de compartirlos.
    y las reglas de conversión siguen pendientes de diseño y validación.
 3. **Extender la migración con control.** Incorporar revisión del mapeo, pilotos y
    comparación del destino antes de ampliar el prototipo a estructuras nuevas.
-4. **Mejorar la interfaz gráfica.** Diseñar un recorrido más claro para seleccionar
-   origen y destino, revisar el mapeo y entender progreso, errores y resultados.
+4. **Extender la interfaz gráfica.** Añadir el recorrido funcional de selección de
+   archivos, origen y destino, revisión del mapeo y comprensión de progreso,
+   errores y resultados, sobre la mejora visual ya realizada.
 
 Para una defensa o publicación profesional, la idea central es: «No bastó con pedir
 JSON. Aislé fallos, comparé modelos y separé generación de validación; después
-verifiqué los datos almacenados». La evolución hacia archivos e interfaz es una
-dirección del proyecto, no una funcionalidad entregada.
+verifiqué los datos almacenados». La importación de archivos y el recorrido de
+mapeo son una dirección del proyecto, no funcionalidades entregadas.
 
 ## Evidencia y lectura complementaria
 
