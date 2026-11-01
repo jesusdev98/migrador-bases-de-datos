@@ -108,9 +108,10 @@ async function recoverRejectedRecords(engine, target, pokemon, pokemonTypes, bat
   const expectedFields = target === "mongodb" ? ["pokemon"] : ["pokemon", "pokemon_types"];
   if (!candidate || typeof candidate !== "object" || Array.isArray(candidate)
       || Object.keys(candidate).sort().join() !== expectedFields.sort().join()
-      || !Array.isArray(candidate.pokemon) || candidate.pokemon.length !== ids.length
+      || !Array.isArray(candidate.pokemon) || candidate.pokemon.length > ids.length
+      || (target !== "mongodb" && candidate.pokemon.length !== ids.length)
       || candidate.pokemon.some(row => !row || !Number.isSafeInteger(row[key]) || !ids.includes(row[key]))
-      || new Set(candidate.pokemon.map(row => row[key])).size !== ids.length) return null;
+      || new Set(candidate.pokemon.map(row => row[key])).size !== candidate.pokemon.length) return null;
   if (target === "mongodb" && candidate.pokemon.some(row => !Array.isArray(row.types)
       || row.types.some(type => !type || !Number.isSafeInteger(type.slot))
       || new Set(row.types.map(type => type.slot)).size !== row.types.length)) return null;

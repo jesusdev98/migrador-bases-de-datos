@@ -39,6 +39,88 @@ function harness({ target = 'postgresql', replies = [], validations = [], loaded
   return { run: () => button.click(), pilot: () => elements.find(e => e.textContent === `Test one Pokémon for ${label} (no writes)`).click(), batchPilot: () => elements.find(e => e.textContent === `Test up to five Pokémon for ${label} (no writes)`).click(), setPilotId: id => { elements.find(e => e.id === 'pilot-pokemon-id').value = String(id); }, calls, prompts, resets, status, states, elements, blobs, revoked, button, select };
 }
 const writes = h => h.calls.filter(c => c.url === '/api/migrate');
+for (const mergeValid of [true, false]) test(`independent empty Mongo recovery: merged valid=${mergeValid}`, async () => {
+  const rows = {
+    pokemon: [51,52,53,54,55].map(id => ({ ...source.pokemon[0], id })),
+    pokemon_types: [],
+  };
+  const documents = rows.pokemon.map(({id, ...row}) => ({_id:id, ...row, types:[]}));
+  const fail = {valid:false, errors:[{
+    path:'$.migration', code:'value', message:'Preserve source exactly.',
+  }]};
+  const pass = {valid:true, errors:[]};
+  const replies = Array(3).fill('{"pokemon":[]}');
+  const validations = Array(3).fill(fail);
+  for (const row of documents) {
+    const wrong = {...row, name:row.name.toUpperCase()};
+    replies.push(...[wrong, wrong, row].map(p => JSON.stringify({pokemon:[p]})));
+    validations.push(fail, fail, fail, pass);
+  }
+  validations.push(mergeValid ? pass : fail);
+  const h = harness({target:'mongodb', rows, replies, validations});
+  await h.run();
+  assert.equal(h.prompts.length,18);
+  assert.equal(writes(h).length,mergeValid ? 1 : 0);
+  const checks = h.calls.filter(c => c.url === '/api/validate-batch');
+  assert.deepEqual(checks.at(-1).body.migration,{pokemon:documents});
+  for (const id of [51,52,53,54,55])
+    assert.ok(checks.some(c =>
+      JSON.stringify(c.body.ids) === JSON.stringify([id])
+      && c.body.migration.pokemon.length === 0));
+  if (mergeValid)
+    assert.deepEqual(writes(h)[0].body.migration,{pokemon:documents});
+  else
+    assert.equal(h.status.textContent,
+      'Recovered MongoDB batch failed merged validation. No data was written.');
+});
+test('MongoDB recovers omitted documents individually and revalidates the merged batch', async () => {
+  const names = ['dugtrio','meowth','persian','psyduck','golduck'];
+  const rows = { pokemon: names.map((name, i) => ({ ...source.pokemon[0], id: 51 + i, name })),
+    pokemon_types: names.map((_, i) => ({ pokemon_id: 51 + i, slot: 1, type_name: i === 0 ? 'ground' : i < 3 ? 'normal' : 'water' })) };
+  const documents = rows.pokemon.map(({ id, ...row }, i) => ({ _id: id, ...row, types: [{ slot: 1, name: rows.pokemon_types[i].type_name }] }));
+  const initial = { pokemon: documents.map(row => ({ ...row, name: row.name.toUpperCase() })) };
+  const partial = { pokemon: [documents[0]] };
+  const reject = { valid: false, errors: [{ path: '$.migration.pokemon', code: 'missing_row', message: 'Missing requested records.' }] };
+  const accept = { valid: true, errors: [] };
+  const validations = [reject, reject, reject, accept];
+  for (let i = 1; i < 5; i++) validations.push(reject, accept);
+  validations.push(accept);
+  const replies = [JSON.stringify(initial), JSON.stringify(partial), JSON.stringify(partial), ...documents.slice(1).map(row => JSON.stringify({ pokemon: [row] }))];
+  const h = harness({ target: 'mongodb', rows, replies, validations }); await h.run();
+  assert.equal(h.prompts.length, 7);
+  assert.deepEqual(h.prompts.slice(3).map(p => JSON.parse(p.messages[1].content).pokemon.map(row => row.id)), [[52],[53],[54],[55]]);
+  const checks = h.calls.filter(c => c.url === '/api/validate-batch');
+  assert.deepEqual(checks[1].body.migration, partial);
+  assert.deepEqual(checks.at(-1).body, { target: 'mongodb', ids: [51,52,53,54,55], migration: { pokemon: documents } });
+  assert.deepEqual(writes(h)[0].body.migration, { pokemon: documents });
+  assert.equal(writes(h).length, 1);
+});
+for (const target of ['postgresql','mariadb']) test(`${target} keeps original rejection of missing-record candidates`, async () => {
+  const rows = { pokemon: [source.pokemon[0], { ...source.pokemon[0], id: 2 }], pokemon_types: [] };
+  const partial = { pokemon: [source.pokemon[0]], pokemon_types: [] };
+  const reject = { valid: false, errors: [{ path: '$.migration.pokemon', code: 'missing_row', message: 'Missing record.' }] };
+  const h = harness({ target, rows, replies: Array(3).fill(JSON.stringify(partial)), validations: Array(3).fill(reject) });
+  await h.run(); assert.equal(h.prompts.length, 3); assert.equal(writes(h).length, 0);
+  assert.equal(h.calls.filter(c => c.url === '/api/validate-batch').length, 3);
+});
+for (const badId of [51,999]) test(`MongoDB rejects duplicate or foreign identity ${badId} instead of hiding it during recovery`, async () => {
+  const rows = { pokemon: [51,52].map(id => ({ ...source.pokemon[0], id })), pokemon_types: [] };
+  const bad = { pokemon: [51,badId].map(_id => ({ ...source.pokemon[0], _id, types: [] })) };
+  const reject = { valid: false, errors: [{ path: '$.migration.pokemon', code: 'duplicate_row', message: 'Invalid identities.' }] };
+  const h = harness({ target: 'mongodb', rows, replies: Array(3).fill(JSON.stringify(bad)), validations: Array(3).fill(reject) });
+  await h.run(); assert.equal(h.prompts.length, 3); assert.equal(writes(h).length, 0);
+  assert.equal(h.calls.filter(c => c.url === '/api/validate-batch').length, 3);
+});
+test('MongoDB missing-record recovery stops after three failed single-record attempts without writes', async () => {
+  const rows = { pokemon: [51,52].map(id => ({ ...source.pokemon[0], id })), pokemon_types: [] };
+  const partial = { pokemon: [{ _id: 51, name: 'bulbasaur', height: 7, weight: 69, sprite_url: null, types: [] }] };
+  const reject = { valid: false, errors: [{ path: '$.migration.pokemon', code: 'missing_row', message: 'Missing record.' }] };
+  const h = harness({ target: 'mongodb', rows,
+    replies: [...Array(3).fill(JSON.stringify(partial)), 'bad', 'bad', 'bad'],
+    validations: [reject,reject,reject,{ valid: true, errors: [] },reject] });
+  await h.run(); assert.equal(h.prompts.length, 6); assert.equal(writes(h).length, 0);
+  assert.equal(h.button.disabled, false);
+});
 for (const target of ['postgresql','mariadb','mongodb']) test(`${target} uses explicit structural schema and reset for every completion`, async () => {
   const h = harness({ target, replies: ['bad'] }); await h.pilot();
   assert.equal(h.resets.length, h.prompts.length);

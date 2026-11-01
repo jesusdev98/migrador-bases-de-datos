@@ -23,5 +23,8 @@ recovery, no-write pilots, readback and rejected-input invariants. Real model
 inference is distinct from mocked orchestration tests.
 
 Raw downloaded model reports and private environment files remain local and are
-not published. No successful complete MongoDB run is claimed. The next MongoDB
-change will be isolated in a separate commit from this initial working baseline.
+not published. No successful complete MongoDB run is claimed. The targeted MongoDB
+missing-document recovery change is isolated from initial working baseline
+`286e5fe` in a separate feature branch/commit. Deterministic recovery tests do not
+turn the last failed real MongoDB run into a successful one; another actual run
+and destination readback are still required.
